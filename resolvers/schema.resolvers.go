@@ -18,7 +18,7 @@ func (r *queryResolver) Deck(ctx context.Context, id *string) (*models.Deck, err
 	return &models.Deck{}, nil
 }
 
-func (r *queryResolver) Card(ctx context.Context, deckId *string, id *string) (*models.Card, error) {
+func (r *queryResolver) Card(ctx context.Context, deckId string, id string) (*models.Card, error) {
 	return &models.Card{}, nil
 }
 

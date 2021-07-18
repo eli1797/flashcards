@@ -1,15 +1,16 @@
 type User {
+  id: ID!
   decks: [Deck]!
 }
 
 type Deck {
-  id: String!
+  id: ID!
   title: String
   dueCards: [Card]
 }
 
 type Card {
-  id: String!
+  id: ID!
   front: String
   back: String
 }
@@ -17,7 +18,7 @@ type Card {
 type Query {
   user: User!
   deck(id: String): Deck
-  card(deckId: String, id: String): Card
+  card(deckId: ID!, id: ID!): Card
 }
 
 # directive @goField(
