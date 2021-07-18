@@ -1,20 +1,20 @@
-package graph
+package resolvers
 
 // This file will be automatically regenerated based on the schema, any resolver implementations
 // will be copied through when generating and any unknown code will be moved to the end.
 
 import (
 	"context"
-	"flashcards/graph/generated"
-	"flashcards/graph/model"
+	"flashcards/generated"
+	"flashcards/models"
 )
 
-func (r *queryResolver) Deck(ctx context.Context) (*model.Deck, error) {
-	return &model.Deck{}, nil
+func (r *queryResolver) Deck(ctx context.Context) (*models.Deck, error) {
+	return &models.Deck{}, nil
 	// panic(fmt.Errorf("not implemented"))
 }
 
-// Query returns generated.QueryResolver implementation.
+// Query returns main.QueryResolver implementation.
 func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
 
 type queryResolver struct{ *Resolver }

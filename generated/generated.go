@@ -6,7 +6,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"flashcards/graph/model"
+	"flashcards/models"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -36,6 +36,7 @@ type Config struct {
 
 type ResolverRoot interface {
 	Query() QueryResolver
+	__Directive() __DirectiveResolver
 }
 
 type DirectiveRoot struct {
@@ -53,7 +54,10 @@ type ComplexityRoot struct {
 }
 
 type QueryResolver interface {
-	Deck(ctx context.Context) (*model.Deck, error)
+	Deck(ctx context.Context) (*models.Deck, error)
+}
+type __DirectiveResolver interface {
+	IsRepeatable(ctx context.Context, obj *introspection.Directive) (bool, error)
 }
 
 type executableSchema struct {
@@ -142,7 +146,7 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 }
 
 var sources = []*ast.Source{
-	{Name: "graph/schema.graphqls", Input: `type Deck {
+	{Name: "schema/schema.graphqls", Input: `type Deck {
   id: String!
   title: String
 }
@@ -218,7 +222,7 @@ func (ec *executionContext) field___Type_fields_args(ctx context.Context, rawArg
 
 // region    **************************** field.gotpl *****************************
 
-func (ec *executionContext) _Deck_id(ctx context.Context, field graphql.CollectedField, obj *model.Deck) (ret graphql.Marshaler) {
+func (ec *executionContext) _Deck_id(ctx context.Context, field graphql.CollectedField, obj *models.Deck) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -253,7 +257,7 @@ func (ec *executionContext) _Deck_id(ctx context.Context, field graphql.Collecte
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Deck_title(ctx context.Context, field graphql.CollectedField, obj *model.Deck) (ret graphql.Marshaler) {
+func (ec *executionContext) _Deck_title(ctx context.Context, field graphql.CollectedField, obj *models.Deck) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -315,9 +319,9 @@ func (ec *executionContext) _Query_deck(ctx context.Context, field graphql.Colle
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*model.Deck)
+	res := resTmp.(*models.Deck)
 	fc.Result = res
-	return ec.marshalNDeck2ᚖflashcardsᚋgraphᚋmodelᚐDeck(ctx, field.Selections, res)
+	return ec.marshalNDeck2ᚖflashcardsᚋmodelsᚐDeck(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -526,6 +530,41 @@ func (ec *executionContext) ___Directive_args(ctx context.Context, field graphql
 	res := resTmp.([]introspection.InputValue)
 	fc.Result = res
 	return ec.marshalN__InputValue2ᚕgithubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐInputValueᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) ___Directive_isRepeatable(ctx context.Context, field graphql.CollectedField, obj *introspection.Directive) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "__Directive",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.__Directive().IsRepeatable(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) ___EnumValue_name(ctx context.Context, field graphql.CollectedField, obj *introspection.EnumValue) (ret graphql.Marshaler) {
@@ -1488,7 +1527,7 @@ func (ec *executionContext) ___Type_ofType(ctx context.Context, field graphql.Co
 
 var deckImplementors = []string{"Deck"}
 
-func (ec *executionContext) _Deck(ctx context.Context, sel ast.SelectionSet, obj *model.Deck) graphql.Marshaler {
+func (ec *executionContext) _Deck(ctx context.Context, sel ast.SelectionSet, obj *models.Deck) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, deckImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -1573,20 +1612,34 @@ func (ec *executionContext) ___Directive(ctx context.Context, sel ast.SelectionS
 		case "name":
 			out.Values[i] = ec.___Directive_name(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "description":
 			out.Values[i] = ec.___Directive_description(ctx, field, obj)
 		case "locations":
 			out.Values[i] = ec.___Directive_locations(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "args":
 			out.Values[i] = ec.___Directive_args(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
+		case "isRepeatable":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec.___Directive_isRepeatable(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -1819,11 +1872,11 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 	return res
 }
 
-func (ec *executionContext) marshalNDeck2flashcardsᚋgraphᚋmodelᚐDeck(ctx context.Context, sel ast.SelectionSet, v model.Deck) graphql.Marshaler {
+func (ec *executionContext) marshalNDeck2flashcardsᚋmodelsᚐDeck(ctx context.Context, sel ast.SelectionSet, v models.Deck) graphql.Marshaler {
 	return ec._Deck(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNDeck2ᚖflashcardsᚋgraphᚋmodelᚐDeck(ctx context.Context, sel ast.SelectionSet, v *model.Deck) graphql.Marshaler {
+func (ec *executionContext) marshalNDeck2ᚖflashcardsᚋmodelsᚐDeck(ctx context.Context, sel ast.SelectionSet, v *models.Deck) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "must not be null")

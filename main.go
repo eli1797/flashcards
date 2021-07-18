@@ -1,8 +1,8 @@
 package main
 
 import (
-	"flashcards/graph"
-	"flashcards/graph/generated"
+	"flashcards/generated"
+	"flashcards/resolvers"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
@@ -42,7 +42,7 @@ func HandleGraphqlPlayground() gin.HandlerFunc {
 }
 
 func HandleGraphqlQuery() gin.HandlerFunc {
-	config := generated.Config{Resolvers: &graph.Resolver{}}
+	config := generated.Config{Resolvers: resolvers.NewResolver()}
 	srv := handler.NewDefaultServer(generated.NewExecutableSchema(config))
 	return func(c *gin.Context) {
 		srv.ServeHTTP(c.Writer, c.Request)
