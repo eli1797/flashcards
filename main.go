@@ -7,11 +7,17 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/gin-gonic/gin"
+
+	"os"
 )
 
-const defaultPort = ":3000"
-
 func main() {
+
+	defaultPort := ":3000"
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = defaultPort
+	}
 
 	server := gin.Default()
 
@@ -25,7 +31,7 @@ func main() {
 	server.GET("/__", HandleGraphqlPlayground())
 	server.POST("/query", HandleGraphqlQuery())
 
-	server.Run(defaultPort) // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
+	server.Run(port)
 }
 
 func HandleGraphqlPlayground() gin.HandlerFunc {
