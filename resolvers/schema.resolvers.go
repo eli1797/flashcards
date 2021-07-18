@@ -9,12 +9,20 @@ import (
 	"flashcards/models"
 )
 
-func (r *queryResolver) Deck(ctx context.Context) (*models.Deck, error) {
-	return &models.Deck{}, nil
-	// panic(fmt.Errorf("not implemented"))
-}
-
 // Query returns main.QueryResolver implementation.
 func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
 
 type queryResolver struct{ *Resolver }
+
+func (r *queryResolver) Deck(ctx context.Context, id *string) (*models.Deck, error) {
+	return &models.Deck{}, nil
+}
+
+func (r *queryResolver) Card(ctx context.Context, deckId *string, id *string) (*models.Card, error) {
+	return &models.Card{}, nil
+}
+
+func (r *queryResolver) User(ctx context.Context) (*models.User, error) {
+	return &models.User{}, nil
+
+}

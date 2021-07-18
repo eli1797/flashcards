@@ -1,10 +1,23 @@
+type User {
+  decks: [Deck]!
+}
+
 type Deck {
   id: String!
   title: String
+  dueCards: [Card]
+}
+
+type Card {
+  id: String!
+  front: String
+  back: String
 }
 
 type Query {
-  deck: Deck!
+  user: User!
+  deck(id: String): Deck
+  card(deckId: String, id: String): Card
 }
 
 # directive @goField(
