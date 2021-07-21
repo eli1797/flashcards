@@ -11,7 +11,8 @@ precommit:
 	git add go.mod
 	git add go.sum
 
-# make test:
+make test:
+	go test ./...
 # 	go install github.com/jstemmer/go-junit-report
 
 
