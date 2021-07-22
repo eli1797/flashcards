@@ -33,8 +33,9 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET }}
         aws-region: us-east-2
 
+    - uses: actions/checkout@v2
+    
     - name: Build, Zip, Put in S3
-      uses: actions/checkout@v2
       run: |
         make build-linux
         zip ${{ env.ENVIRONMENT }}-code bin/main 
