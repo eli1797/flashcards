@@ -22,7 +22,7 @@ jobs:
 
   aws-configure:
     runs-on: macos-latest
-    needs: unit-test
+    # needs: unit-test
 
     steps:
     - name: Configure AWS Credentials
@@ -41,12 +41,8 @@ jobs:
     - name: Build, Zip, Put in S3
       run: |
         make build-linux
-        sleep 3
         zip ${{ env.ENVIRONMENT }}-code bin/main 
-        >
-        aws s3 cp
-        ${{ env.ENVIRONMENT }}-code.zip
-        s3://go-code-bucket/${{ env.ENVIRONMENT }}-code
+        aws s3 cp ${{ env.ENVIRONMENT }}-code.zip s3://go-code-bucket/${{ env.ENVIRONMENT }}-code
 
   # terraform-plan:
   #   runs-on: macos-latest
