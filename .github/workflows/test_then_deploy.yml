@@ -35,7 +35,7 @@ jobs:
 
     steps:
     - name: Build, Zip, Put in S3
-      run : |
+      run: |
         make build-linux
         zip ${{ var.env }}-code bin/main 
         >
