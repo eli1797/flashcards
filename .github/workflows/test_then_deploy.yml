@@ -50,13 +50,13 @@ jobs:
         working-directory: ./terraform
 
     steps:
-    # - name: Configure AWS Credentials
-    #   id: aws-configure
-    #   uses: aws-actions/configure-aws-credentials@v1
-    #   with:
-    #     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
-    #     aws-secret-access-key: ${{ secrets.AWS_SECRET }}
-    #     aws-region: us-east-2
+    - name: Configure AWS Credentials
+      id: aws-configure
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET }}
+        aws-region: us-east-2
 
     - uses: actions/checkout@v2
     
