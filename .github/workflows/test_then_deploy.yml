@@ -82,7 +82,7 @@ jobs:
 
     - name: Terraform Plan
       id: plan
-      run: terraform plan -no-color -var 'ENVIRONMENT=${{ env.ENVIRONMENT }}'
+      run: terraform plan -var 'ENVIRONMENT=${{ env.ENVIRONMENT }}'
       continue-on-error: true
 
 
