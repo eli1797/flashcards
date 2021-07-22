@@ -41,35 +41,47 @@ jobs:
         zip ${{ env.ENVIRONMENT }}-code bin/main 
         aws s3 cp ${{ env.ENVIRONMENT }}-code.zip s3://go-code-bucket/${{ env.ENVIRONMENT }}-code
 
-  # terraform-plan:
-  #   runs-on: macos-latest
-  #   needs: [aws-upload, unit-test]
+  terraform-plan:
+    runs-on: macos-latest
+    needs: [aws-upload, unit-test]
 
-  #   steps:
-  #   - name: Setup Terraform
-  #     uses: hashicorp/setup-terraform@v1
-  #     with:
-  #       terraform_version: 0.14.6
+    steps:
+    # - name: Configure AWS Credentials
+    #   id: aws-configure
+    #   uses: aws-actions/configure-aws-credentials@v1
+    #   with:
+    #     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+    #     aws-secret-access-key: ${{ secrets.AWS_SECRET }}
+    #     aws-region: us-east-2
 
-  #   - name: Terraform Fmt
-  #     id: fmt
-  #     run: terraform fmt -check -diff
-  #     continue-on-error: false
-
-  #   - name: Terraform Init
-  #     id: init
-  #     run: terraform init
-  #     continue-on-error: false
+    - uses: actions/checkout@v2
     
-  #   - name: Terraform Validate
-  #     id: validate
-  #     run: terraform validate -no-color
-  #     continue-on-error: true
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v1
+      with:
+        terraform_version: 1.0.2
 
-  #   - name: Terraform Plan
-  #     id: plan
-  #     run: terraform plan -no-color
-  #     continue-on-error: true
+    - name: Terraform Fmt
+      id: fmt
+      run: |
+        cd terraform
+        terraform fmt -check -diff
+      continue-on-error: false
+
+    - name: Terraform Init
+      id: init
+      run: terraform init
+      continue-on-error: false
+    
+    - name: Terraform Validate
+      id: validate
+      run: terraform validate -no-color
+      continue-on-error: true
+
+    - name: Terraform Plan
+      id: plan
+      run: terraform plan -no-color
+      continue-on-error: true
 
 
     
