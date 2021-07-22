@@ -35,8 +35,8 @@ resource "aws_lambda_function" "api-cards" {
   role = aws_iam_role.lambda_exec.arn
 }
 
-resource "aws_cloudwatch_log_group" "api_cards" {
-  name = "/aws/lambda/${aws_lambda_function.api_cards.function_name}"
+resource "aws_cloudwatch_log_group" "api-cards" {
+  name = "/aws/lambda/${aws_lambda_function.api-cards.function_name}"
 
   retention_in_days = 15
 }
