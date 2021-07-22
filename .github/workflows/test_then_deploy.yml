@@ -20,9 +20,9 @@ jobs:
     - name: Test
       run: make test
 
-  aws-deploy:
+  aws-upload:
     runs-on: macos-latest
-    # needs: unit-test
+    needs: unit-test
 
     steps:
     - name: Configure AWS Credentials
@@ -34,7 +34,7 @@ jobs:
         aws-region: us-east-2
 
     - uses: actions/checkout@v2
-    
+
     - name: Build, Zip, Put in S3
       run: |
         make build-linux
@@ -43,7 +43,7 @@ jobs:
 
   # terraform-plan:
   #   runs-on: macos-latest
-  #   needs: [aws-configure, code-to-s3, unit-test]
+  #   needs: [aws-upload, unit-test]
 
   #   steps:
   #   - name: Setup Terraform
