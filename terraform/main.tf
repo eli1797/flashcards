@@ -17,7 +17,7 @@ resource "aws_lambda_function" "api-cards" {
   function_name = "api.cards"
 
   s3_bucket = "go-code-bucket"
-  s3_key    = aws_s3_bucket_object.lambda_go_bucket.key
+  s3_key    = "${var.env}-code"
 
   runtime = "go1.x"
   handler = "bin/main"
