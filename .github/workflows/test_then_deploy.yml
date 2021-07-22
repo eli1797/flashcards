@@ -37,6 +37,7 @@ jobs:
     needs: aws-configure
 
     steps:
+    - uses: actions/checkout@v2
     - name: Build, Zip, Put in S3
       run: |
         make build-linux
