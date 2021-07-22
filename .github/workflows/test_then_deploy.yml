@@ -45,6 +45,10 @@ jobs:
     runs-on: macos-latest
     needs: [aws-upload, unit-test]
 
+    defaults:
+      run:
+        working-directory: ./terraform
+
     steps:
     # - name: Configure AWS Credentials
     #   id: aws-configure
@@ -63,9 +67,7 @@ jobs:
 
     - name: Terraform Fmt
       id: fmt
-      run: |
-        cd terraform
-        terraform fmt -check -diff
+      run: terraform fmt -check -diff
       continue-on-error: false
 
     - name: Terraform Init
