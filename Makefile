@@ -11,9 +11,17 @@ precommit:
 	git add go.mod
 	git add go.sum
 
-make test:
+test:
 	go test ./...
 # 	go install github.com/jstemmer/go-junit-report
 
+build:
+	go get ./..
+	go build
+
+build-linux:
+	go get ./...
+# 	env GOOS=linux
+	go build main.go
 
 .PHONY:
