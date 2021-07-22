@@ -4,7 +4,7 @@ on: push
 
 jobs:
 
-  Run-Unit-Tests:
+  unit-test:
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v2
@@ -16,3 +16,24 @@ jobs:
 
     - name: Test
       run: make test
+
+  step2:
+    runs-on: macos-latest
+    needs: unit-test
+
+    steps:
+    - name: Print if success, then trigger failure
+      run: |
+        echo "Completed job 2, but triggering failure"
+        exit 1
+
+  never:
+    runs-on: macos-latest
+    needs: step2
+
+    steps:
+    - name: Will never run
+      run: |
+        echo "If you can read this, the experiment failed"
+
+
