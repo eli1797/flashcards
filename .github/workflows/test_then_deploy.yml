@@ -20,25 +20,21 @@ jobs:
     - name: Test
       run: make test
 
-  aws-configure:
+  aws-deploy:
     runs-on: macos-latest
     # needs: unit-test
 
     steps:
     - name: Configure AWS Credentials
+      id: aws-configure
       uses: aws-actions/configure-aws-credentials@v1
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET }}
         aws-region: us-east-2
 
-  code-to-s3:
-    runs-on: macos-latest
-    needs: aws-configure
-
-    steps:
-    - uses: actions/checkout@v2
     - name: Build, Zip, Put in S3
+      uses: actions/checkout@v2
       run: |
         make build-linux
         zip ${{ env.ENVIRONMENT }}-code bin/main 
@@ -46,7 +42,7 @@ jobs:
 
   # terraform-plan:
   #   runs-on: macos-latest
-  #   needs: aws-configure
+  #   needs: [aws-configure, code-to-s3, unit-test]
 
   #   steps:
   #   - name: Setup Terraform
