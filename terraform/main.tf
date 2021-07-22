@@ -38,7 +38,7 @@ resource "aws_lambda_function" "api-cards" {
 resource "aws_cloudwatch_log_group" "api-cards" {
   name = "/aws/lambda/${aws_lambda_function.api-cards.function_name}"
 
-  retention_in_days = 15
+  retention_in_days = 7
 }
 
 resource "aws_iam_role" "lambda_exec" {
