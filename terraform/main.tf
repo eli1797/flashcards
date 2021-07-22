@@ -25,9 +25,9 @@ resource "aws_lambda_function" "api-cards" {
   publish = true
 
   environment {
-      variables = {
-          ENVIRONMENT = var.env
-      }
+    variables = {
+      ENVIRONMENT = var.env
+    }
   }
 
   ## source_code_hash = filebase64sha256("lambda_function_payload.zip")
