@@ -2,6 +2,9 @@ name: Go
 
 on: push
 
+env:
+  ENVIRONMENT: "tst"
+
 jobs:
 
   unit-test:
@@ -37,11 +40,11 @@ jobs:
     - name: Build, Zip, Put in S3
       run: |
         make build-linux
-        zip ${{ var.env }}-code bin/main 
+        zip ${{ env.ENVIRONMENT }}-code bin/main 
         >
         aws s3 cp
-        ${{ var.env }}-code.zip
-        s3://go-code-bucket/${{ var.env }}-code
+        ${{ env.ENVIRONMENT }}-code.zip
+        s3://go-code-bucket/${{ env.ENVIRONMENT }}-code
 
   # terraform-plan:
   #   runs-on: macos-latest
