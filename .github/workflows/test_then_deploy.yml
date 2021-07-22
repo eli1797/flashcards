@@ -31,17 +31,17 @@ jobs:
 
   code-to-s3:
     runs-on: macos-latest
-      needs: aws-configure
+    needs: aws-configure
 
-      steps:
-      - name: Build, Zip, Put in S3
-        run : |
-          make build-linux
-          zip ${{ var.env }}-code bin/main 
-          >
-          aws s3 cp
-          ${{ var.env }}-code.zip
-          s3://go-code-bucket/${{ var.env }}-code
+    steps:
+    - name: Build, Zip, Put in S3
+      run : |
+        make build-linux
+        zip ${{ var.env }}-code bin/main 
+        >
+        aws s3 cp
+        ${{ var.env }}-code.zip
+        s3://go-code-bucket/${{ var.env }}-code
 
   # terraform-plan:
   #   runs-on: macos-latest
