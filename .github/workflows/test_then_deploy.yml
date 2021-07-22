@@ -41,6 +41,7 @@ jobs:
     - name: Build, Zip, Put in S3
       run: |
         make build-linux
+        sleep 3
         zip ${{ env.ENVIRONMENT }}-code bin/main 
         >
         aws s3 cp

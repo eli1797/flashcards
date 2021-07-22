@@ -23,7 +23,5 @@ build-linux:
 	go get ./...
 	env GOOS=linux
 	go build -o bin/main main.go
-	pwd
-	ls
 
 .PHONY:
