@@ -17,23 +17,14 @@ jobs:
     - name: Test
       run: make test
 
-  step2:
+  aws-configure:
     runs-on: macos-latest
     needs: unit-test
 
     steps:
-    - name: Print if success, then trigger failure
-      run: |
-        echo "Completed job 2, but triggering failure"
-        exit 1
-
-  never:
-    runs-on: macos-latest
-    needs: step2
-
-    steps:
-    - name: Will never run
-      run: |
-        echo "If you can read this, the experiment failed"
-
-
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET }}
+        aws-region: us-east-2
