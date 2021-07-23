@@ -5,6 +5,8 @@ go 1.16
 require (
 	github.com/99designs/gqlgen v0.13.0
 	github.com/agnivade/levenshtein v1.1.1 // indirect
+	github.com/apex/gateway v1.1.2
+	github.com/aws/aws-lambda-go v1.25.0 // indirect
 	github.com/gin-gonic/gin v1.7.2
 	github.com/go-playground/validator/v10 v10.7.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
@@ -22,5 +24,4 @@ require (
 	golang.org/x/text v0.3.6 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776 // indirect
 )

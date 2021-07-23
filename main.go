@@ -4,9 +4,13 @@ import (
 	"flashcards/generated"
 	"flashcards/resolvers"
 
+	"github.com/apex/gateway"
+
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/gin-gonic/gin"
+
+	"log"
 
 	"os"
 )
@@ -15,7 +19,7 @@ func main() {
 
 	defaultPort := ":3000"
 	port := os.Getenv("PORT")
-	if port == "" {
+	if port == "" || port == ":" {
 		port = defaultPort
 	}
 
@@ -31,7 +35,7 @@ func main() {
 	server.GET("/__", HandleGraphqlPlayground())
 	server.POST("/query", HandleGraphqlQuery())
 
-	server.Run(port)
+	log.Fatal(gateway.ListenAndServe(port, nil))
 }
 
 func HandleGraphqlPlayground() gin.HandlerFunc {

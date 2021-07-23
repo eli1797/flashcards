@@ -7,39 +7,39 @@ env:
 
 jobs:
 
-  # unit-test:
-  #   runs-on: macos-latest
-  #   steps:
-  #   - uses: actions/checkout@v2
+  unit-test:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v2
 
-  #   - name: Set up Go
-  #     uses: actions/setup-go@v2
-  #     with:
-  #       go-version: 1.16
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.16
 
-  #   - name: Test
-  #     run: make test
+    - name: Test
+      run: make test
 
-  # aws-upload:
-  #   runs-on: macos-latest
-  #   needs: unit-test
+  aws-upload:
+    runs-on: macos-latest
+    needs: unit-test
 
-  #   steps:
-  #   - name: Configure AWS Credentials
-  #     id: aws-configure
-  #     uses: aws-actions/configure-aws-credentials@v1
-  #     with:
-  #       aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
-  #       aws-secret-access-key: ${{ secrets.AWS_SECRET }}
-  #       aws-region: us-east-2
+    steps:
+    - name: Configure AWS Credentials
+      id: aws-configure
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET }}
+        aws-region: us-east-2
 
-  #   - uses: actions/checkout@v2
+    - uses: actions/checkout@v2
 
-  #   - name: Build, Zip, Put in S3
-  #     run: |
-  #       make build-linux
-  #       zip ${{ env.ENVIRONMENT }}-code bin/main 
-  #       aws s3 cp ${{ env.ENVIRONMENT }}-code.zip s3://go-code-bucket/${{ env.ENVIRONMENT }}-code
+    - name: Build, Zip, Put in S3
+      run: |
+        make build-linux
+        zip ${{ env.ENVIRONMENT }}-code bin/main 
+        aws s3 cp ${{ env.ENVIRONMENT }}-code.zip s3://go-code-bucket/${{ env.ENVIRONMENT }}-code
 
   terraform-plan:
     runs-on: macos-latest
