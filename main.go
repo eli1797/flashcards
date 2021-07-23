@@ -35,7 +35,7 @@ func main() {
 	server.GET("/__", HandleGraphqlPlayground())
 	server.POST("/query", HandleGraphqlQuery())
 
-	log.Fatal(gateway.ListenAndServe(port, nil))
+	log.Fatal(gateway.ListenAndServe(port, server))
 }
 
 func HandleGraphqlPlayground() gin.HandlerFunc {
