@@ -31,7 +31,7 @@ resource "aws_lambda_function" "api_cards" {
     }
   }
 
-  ## source_code_hash = filebase64sha256("lambda_function_payload.zip")
+  # source_code_hash = filebase64sha256("lambda_function_payload.zip")
 
   role = aws_iam_role.lambda_exec.arn
 }

@@ -38,12 +38,16 @@ jobs:
     - name: Build, Zip, Put in S3
       run: |
         make build-linux
+        # Zip and upload source code
         zip ${{ env.ENVIRONMENT }}-code bin/main 
         aws s3 cp ${{ env.ENVIRONMENT }}-code.zip s3://go-code-bucket/${{ env.ENVIRONMENT }}-code
+        # Calculate and upload a source_code_hash for the zip
+        openssl dgst -sha256 -binary ${{ env.ENVIRONMENT }}-code.zip | openssl enc -base64 | tr -d "\n" > ${{ env.ENVIRONMENT }}-code-sha256.zip.base64sha256
+        aws s3 cp --content-type text/plain ${{ env.ENVIRONMENT }}-code-sha256.zip.base64sha256 s3://go-code-bucket/${{ env.ENVIRONMENT }}-code-sha256
 
   terraform-plan:
     runs-on: macos-latest
-    # needs: [aws-upload, unit-test]
+    needs: [aws-upload, unit-test]
 
     defaults:
       run:
