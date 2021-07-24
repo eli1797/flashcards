@@ -94,6 +94,7 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
         name: ${{ env.ENVIRONMENT }}-tfplan
+        path: ${{ steps.plan.outputs }}
 
   terraform-apply:
     runs-on: macos-latest
