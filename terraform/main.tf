@@ -31,9 +31,14 @@ resource "aws_lambda_function" "api_cards" {
     }
   }
 
-  # source_code_hash = filebase64sha256("lambda_function_payload.zip")
+  source_code_hash = data.aws_s3_bucket_object.api_cards_source_code_hash.body
 
   role = aws_iam_role.lambda_exec.arn
+}
+
+data "aws_s3_bucket_object" "api_cards_source_code_hash" {
+  bucket = "go-code-bucket"
+  key    = "${var.env}-code-sha256"
 }
 
 resource "aws_cloudwatch_log_group" "api_cards_cw" {
