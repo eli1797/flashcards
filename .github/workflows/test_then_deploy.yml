@@ -1,4 +1,4 @@
-name: Go
+name: Test and Deploy Lambda
 
 on: push
 
@@ -35,7 +35,7 @@ jobs:
 
     - uses: actions/checkout@v2
 
-    - name: Build, Zip, Put in S3
+    - name: Build, Zip, Copy to S3
       run: |
         make build-linux
         # Zip and upload source code
@@ -45,7 +45,7 @@ jobs:
         openssl dgst -sha256 -binary ${{ env.ENVIRONMENT }}-code.zip | openssl enc -base64 | tr -d "\n" > ${{ env.ENVIRONMENT }}-code-sha256.zip.base64sha256
         aws s3 cp --content-type text/plain ${{ env.ENVIRONMENT }}-code-sha256.zip.base64sha256 s3://go-code-bucket/${{ env.ENVIRONMENT }}-code-sha256
 
-  terraform-plan:
+  terraform-init-plan-apply:
     runs-on: macos-latest
     needs: [aws-upload, unit-test]
 
@@ -89,7 +89,7 @@ jobs:
       run: terraform plan -var 'env=${{ env.ENVIRONMENT }}' -out=${{ env.ENVIRONMENT }}-tfplan
       continue-on-error: false
 
-    - name: Terraform apply
+    - name: Terraform Apply
       id: apply
       run: terraform apply -auto-approve -var 'env=${{ env.ENVIRONMENT }}'
       continue-on-error: false
