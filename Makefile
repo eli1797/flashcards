@@ -21,7 +21,8 @@ build:
 
 build-linux:
 	go get ./...
-	GIN_MODE=release GOOS=linux go build -o bin/main main.go
+	export GIN_MODE=release 
+	GOOS=linux go build -o bin/main main.go
 
 run:
 	go run main.go
