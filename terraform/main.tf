@@ -34,6 +34,7 @@ resource "aws_lambda_function" "api_cards" {
   environment {
     variables = {
       ENVIRONMENT = var.env
+      GIN_MODE = "release"
     }
   }
 
