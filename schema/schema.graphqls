@@ -1,6 +1,5 @@
 type User {
   id: ID!
-  decks: [Deck]!
 }
 
 type Deck {
@@ -17,7 +16,7 @@ type Card {
 
 type Query {
   user: User!
-  deck(id: String): Deck
+  deck(id: String!): Deck
   card(deckId: ID!, id: ID!): Card
 }
 

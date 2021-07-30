@@ -3,6 +3,7 @@ package main
 import (
 	"flashcards/generated"
 	"flashcards/resolvers"
+	"net/http"
 
 	"github.com/apex/gateway"
 
@@ -35,7 +36,11 @@ func main() {
 	server.GET("/__", HandleGraphqlPlayground())
 	server.POST("/query", HandleGraphqlQuery())
 
-	log.Fatal(gateway.ListenAndServe(port, server))
+	if gin.Mode() == "debug" {
+		log.Fatal(http.ListenAndServe(port, server))
+	} else if gin.Mode() == "release" {
+		log.Fatal(gateway.ListenAndServe(port, server))
+	}
 }
 
 func HandleGraphqlPlayground() gin.HandlerFunc {
