@@ -35,6 +35,7 @@ type Config struct {
 }
 
 type ResolverRoot interface {
+	Mutation() MutationResolver
 	Query() QueryResolver
 	__Directive() __DirectiveResolver
 }
@@ -55,6 +56,10 @@ type ComplexityRoot struct {
 		Title    func(childComplexity int) int
 	}
 
+	Mutation struct {
+		PutCardInDeck func(childComplexity int, deckID string, card *models.CardInput) int
+	}
+
 	Query struct {
 		Card func(childComplexity int, deckID string, id string) int
 		Deck func(childComplexity int, id string) int
@@ -66,6 +71,9 @@ type ComplexityRoot struct {
 	}
 }
 
+type MutationResolver interface {
+	PutCardInDeck(ctx context.Context, deckID string, card *models.CardInput) (*models.Card, error)
+}
 type QueryResolver interface {
 	User(ctx context.Context) (*models.User, error)
 	Deck(ctx context.Context, id string) (*models.Deck, error)
@@ -132,6 +140,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Deck.Title(childComplexity), true
 
+	case "Mutation.putCardInDeck":
+		if e.complexity.Mutation.PutCardInDeck == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_putCardInDeck_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.PutCardInDeck(childComplexity, args["deckId"].(string), args["card"].(*models.CardInput)), true
+
 	case "Query.card":
 		if e.complexity.Query.Card == nil {
 			break
@@ -194,6 +214,20 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 				Data: buf.Bytes(),
 			}
 		}
+	case ast.Mutation:
+		return func(ctx context.Context) *graphql.Response {
+			if !first {
+				return nil
+			}
+			first = false
+			data := ec._Mutation(ctx, rc.Operation.SelectionSet)
+			var buf bytes.Buffer
+			data.MarshalGQL(&buf)
+
+			return &graphql.Response{
+				Data: buf.Bytes(),
+			}
+		}
 
 	default:
 		return graphql.OneShot(graphql.ErrorResponse(ctx, "unsupported GraphQL operation"))
@@ -242,6 +276,16 @@ type Query {
   card(deckId: ID!, id: ID!): Card
 }
 
+type Mutation {
+  putCardInDeck(deckId: ID!, card: CardInput): Card
+}
+
+input CardInput {
+  id: ID
+  front: String
+  back: String
+}
+
 # directive @goField(
 #   forceResolver: Boolean
 # ) on INPUT_FIELD_DEFINITION | FIELD_DEFINITION
@@ -255,6 +299,30 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 // endregion ************************** generated!.gotpl **************************
 
 // region    ***************************** args.gotpl *****************************
+
+func (ec *executionContext) field_Mutation_putCardInDeck_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["deckId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deckId"))
+		arg0, err = ec.unmarshalNID2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["deckId"] = arg0
+	var arg1 *models.CardInput
+	if tmp, ok := rawArgs["card"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("card"))
+		arg1, err = ec.unmarshalOCardInput2ᚖflashcardsᚋmodelsᚐCardInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["card"] = arg1
+	return args, nil
+}
 
 func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
@@ -544,6 +612,45 @@ func (ec *executionContext) _Deck_dueCards(ctx context.Context, field graphql.Co
 	res := resTmp.([]*models.Card)
 	fc.Result = res
 	return ec.marshalOCard2ᚕᚖflashcardsᚋmodelsᚐCard(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_putCardInDeck(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_putCardInDeck_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().PutCardInDeck(rctx, args["deckId"].(string), args["card"].(*models.CardInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*models.Card)
+	fc.Result = res
+	return ec.marshalOCard2ᚖflashcardsᚋmodelsᚐCard(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_user(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -1887,6 +1994,42 @@ func (ec *executionContext) ___Type_ofType(ctx context.Context, field graphql.Co
 
 // region    **************************** input.gotpl *****************************
 
+func (ec *executionContext) unmarshalInputCardInput(ctx context.Context, obj interface{}) (models.CardInput, error) {
+	var it models.CardInput
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "id":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			it.ID, err = ec.unmarshalOID2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "front":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("front"))
+			it.Front, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "back":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("back"))
+			it.Back, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 // endregion **************************** input.gotpl *****************************
 
 // region    ************************** interface.gotpl ***************************
@@ -1946,6 +2089,34 @@ func (ec *executionContext) _Deck(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Deck_title(ctx, field, obj)
 		case "dueCards":
 			out.Values[i] = ec._Deck_dueCards(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var mutationImplementors = []string{"Mutation"}
+
+func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, mutationImplementors)
+
+	ctx = graphql.WithFieldContext(ctx, &graphql.FieldContext{
+		Object: "Mutation",
+	})
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Mutation")
+		case "putCardInDeck":
+			out.Values[i] = ec._Mutation_putCardInDeck(ctx, field)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -2668,11 +2839,34 @@ func (ec *executionContext) marshalOCard2ᚖflashcardsᚋmodelsᚐCard(ctx conte
 	return ec._Card(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalOCardInput2ᚖflashcardsᚋmodelsᚐCardInput(ctx context.Context, v interface{}) (*models.CardInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputCardInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalODeck2ᚖflashcardsᚋmodelsᚐDeck(ctx context.Context, sel ast.SelectionSet, v *models.Deck) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._Deck(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOID2ᚖstring(ctx context.Context, v interface{}) (*string, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := graphql.UnmarshalID(v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOID2ᚖstring(ctx context.Context, sel ast.SelectionSet, v *string) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return graphql.MarshalID(*v)
 }
 
 func (ec *executionContext) unmarshalOString2string(ctx context.Context, v interface{}) (string, error) {

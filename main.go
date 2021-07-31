@@ -3,17 +3,14 @@ package main
 import (
 	"flashcards/generated"
 	"flashcards/resolvers"
+	"log"
 	"net/http"
-
-	"github.com/apex/gateway"
+	"os"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
+	"github.com/apex/gateway"
 	"github.com/gin-gonic/gin"
-
-	"log"
-
-	"os"
 )
 
 func main() {
