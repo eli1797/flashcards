@@ -9,3 +9,7 @@ type Deck struct {
 func (d *Deck) DueCards() ([]*Card, error) {
 	return nil, nil
 }
+
+func (d *Deck) AllCards() ([]*Card, error) {
+	return nil, nil
+}

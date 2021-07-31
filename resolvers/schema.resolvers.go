@@ -10,6 +10,7 @@ import (
 	"flashcards/models"
 	"flashcards/services"
 	"fmt"
+	"github.com/google/uuid"
 )
 
 // Query returns main.QueryResolver implementation.
@@ -19,6 +20,19 @@ type queryResolver struct{ *Resolver }
 
 func (r *queryResolver) Deck(ctx context.Context, id string) (*models.Deck, error) {
 	return &models.Deck{}, nil
+}
+
+func (r *queryResolver) AllCardsFromDeck(ctx context.Context, deckID string) ([]*models.Card, error) {
+	db := services.NewCardsDynamoDB(dynamo.New(), "tst-cards")
+
+	userId := "72145bba-63e4-44ce-8cf9-d0ef772cb846"
+
+	res, err := db.GetAllCardsFromDeck(userId, deckID)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
 }
 
 func (r *queryResolver) Card(ctx context.Context, deckId string, id string) (*models.Card, error) {
@@ -45,6 +59,15 @@ func (r *mutationResolver) PutCardInDeck(ctx context.Context, deckID string, car
 
 	// TODO: cleanup
 
+	// TODO: @Debt hardcoded user id, probably need a function that gets the current user from context
+	userId := "72145bba-63e4-44ce-8cf9-d0ef772cb846"
+
+	// TODO: @Debt
+	if card.ID == nil {
+		newId := uuid.New().String()
+		card.ID = &newId
+	}
+
 	result := &models.Card{
 		ID:    *card.ID,
 		Front: *card.Front,
@@ -53,7 +76,7 @@ func (r *mutationResolver) PutCardInDeck(ctx context.Context, deckID string, car
 
 	db := services.NewCardsDynamoDB(dynamo.New(), "tst-cards")
 
-	res, err := db.PutCardInDeck(result, &deckID)
+	res, err := db.PutCardInDeck(userId, result, deckID)
 	if err != nil {
 		return nil, err
 	}

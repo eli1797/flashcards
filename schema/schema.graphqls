@@ -6,6 +6,7 @@ type Deck {
   id: ID!
   title: String
   dueCards: [Card]
+  allCards: [Card]
 }
 
 type Card {
@@ -17,6 +18,7 @@ type Card {
 type Query {
   user: User!
   deck(id: String!): Deck
+  allCardsFromDeck(deckId: ID!): [Card]!
   card(deckId: ID!, id: ID!): Card
 }
 

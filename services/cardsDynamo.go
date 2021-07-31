@@ -1,8 +1,8 @@
 package services
 
 import (
+	"errors"
 	"flashcards/models"
-	"fmt"
 	"strconv"
 	"time"
 
@@ -11,7 +11,8 @@ import (
 )
 
 type cardsDynamo interface {
-	PutCardInDeck(card *models.Card, deckId *string) (*models.Card, error)
+	PutCardInDeck(userId string, card *models.Card, deckId string) (*models.Card, error)
+	GetAllCardsFromDeck(userId string, deckId string) ([]*models.Card, error)
 }
 
 type cardsDynamoDB struct {
@@ -27,15 +28,12 @@ func NewCardsDynamoDB(client *dynamodb.DynamoDB, tableName string) cardsDynamoDB
 	}
 }
 
-func (cDB cardsDynamoDB) PutCardInDeck(card *models.Card, deckId *string) (*models.Card, error) {
+func (c cardsDynamoDB) PutCardInDeck(userId string, card *models.Card, deckId string) (*models.Card, error) {
 
-	// TODO: @Debt hardcarded user id
-	userId := "72145bba-63e4-44ce-8cf9-d0ef772cb846"
-
-	pk := userId + "#DECK#" + *deckId
+	pk := userId + "#DECK#" + deckId
 	sk := "CARD#" + strconv.FormatInt(time.Now().Unix(), 10)
 
-	res, err := cDB.d.UpdateItem(&dynamodb.UpdateItemInput{
+	_, err := c.d.UpdateItem(&dynamodb.UpdateItemInput{
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
 			":front": {
 				S: aws.String(card.Front),
@@ -43,19 +41,61 @@ func (cDB cardsDynamoDB) PutCardInDeck(card *models.Card, deckId *string) (*mode
 			":back": {
 				S: aws.String(card.Back),
 			},
+			":cardId": {
+				S: aws.String(card.ID),
+			},
 		},
 		Key: map[string]*dynamodb.AttributeValue{
 			"userId#TYPE":  {S: aws.String(pk)},
 			"TYPE#nextDue": {S: aws.String(sk)},
 		},
-		UpdateExpression: aws.String("SET front = :front, rear = :back"),
-		TableName:        &cDB.tableName,
+		UpdateExpression: aws.String("SET cardId = :cardId, front = :front, rear = :back"),
+		TableName:        &c.tableName,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	fmt.Println(res)
+	return card, nil
+}
 
-	return nil, nil
+func (c cardsDynamoDB) GetAllCardsFromDeck(userId string, deckId string) ([]*models.Card, error) {
+
+	pk := userId + "#DECK#" + deckId
+
+	res, err := c.d.Query(&dynamodb.QueryInput{
+		ExpressionAttributeNames:   map[string]*string{
+			"#pk": aws.String("userId#TYPE"),
+		},
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":pk": {
+				S: aws.String(pk),
+			},
+		},
+		KeyConditionExpression:    aws.String("#pk = :pk"),
+		TableName:        &c.tableName,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if res.LastEvaluatedKey[c.tableName] != nil {
+		return nil, errors.New("need to implement paginated query")
+	}
+
+	cards := make([]*models.Card, len(res.Items))
+	for i, item := range res.Items {
+		cards[i] = convertDynamoToCard(item)
+	}
+
+	return cards, nil
+}
+
+func convertDynamoToCard(input map[string]*dynamodb.AttributeValue) *models.Card {
+	out := &models.Card{
+		ID: *input["cardId"].S,
+		Front: *input["front"].S,
+		Back: *input["rear"].S,
+	}
+
+	return out
 }
