@@ -8,7 +8,6 @@ import (
 	"flashcards/dynamo"
 	"flashcards/generated"
 	"flashcards/models"
-	"flashcards/services"
 	"fmt"
 	"github.com/google/uuid"
 )
@@ -18,25 +17,16 @@ func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
 
 type queryResolver struct{ *Resolver }
 
-func (r *queryResolver) Deck(ctx context.Context, id string) (*models.Deck, error) {
-	return &models.Deck{}, nil
-}
-
-func (r *queryResolver) AllCardsFromDeck(ctx context.Context, deckID string) ([]*models.Card, error) {
-	db := services.NewCardsDynamoDB(dynamo.New(), "tst-cards")
-
-	userId := "72145bba-63e4-44ce-8cf9-d0ef772cb846"
-
-	res, err := db.GetAllCardsFromDeck(userId, deckID)
-	if err != nil {
-		return nil, err
-	}
-
-	return res, nil
+func (r *queryResolver) Deck(ctx context.Context, deckId string) (*models.Deck, error) {
+	return &models.Deck{
+		ID: deckId,
+	}, nil
 }
 
 func (r *queryResolver) Card(ctx context.Context, deckId string, id string) (*models.Card, error) {
-	return &models.Card{}, nil
+	return &models.Card{
+		DeckId: deckId,
+	}, nil
 }
 
 func (r *queryResolver) User(ctx context.Context) (*models.User, error) {
@@ -74,7 +64,7 @@ func (r *mutationResolver) PutCardInDeck(ctx context.Context, deckID string, car
 		Back:  *card.Back,
 	}
 
-	db := services.NewCardsDynamoDB(dynamo.New(), "tst-cards")
+	db := models.NewCardsDynamoDB(dynamo.New(), "tst-cards")
 
 	res, err := db.PutCardInDeck(userId, result, deckID)
 	if err != nil {

@@ -3,7 +3,8 @@
 package models
 
 type CardInput struct {
-	ID    *string `json:"id"`
-	Front *string `json:"front"`
-	Back  *string `json:"back"`
+	ID      *string `json:"id"`
+	Front   *string `json:"front"`
+	Back    *string `json:"back"`
+	NextDue *string `json:"nextDue"`
 }

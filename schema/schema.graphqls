@@ -11,14 +11,15 @@ type Deck {
 
 type Card {
   id: ID!
+  deckId: ID!
   front: String
   back: String
+  nextDue: String
 }
 
 type Query {
   user: User!
-  deck(id: String!): Deck
-  allCardsFromDeck(deckId: ID!): [Card]!
+  deck(deckId: ID!): Deck
   card(deckId: ID!, id: ID!): Card
 }
 
@@ -30,6 +31,7 @@ input CardInput {
   id: ID
   front: String
   back: String
+  nextDue: String
 }
 
 # directive @goField(
