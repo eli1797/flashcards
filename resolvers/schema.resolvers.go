@@ -10,6 +10,8 @@ import (
 	"flashcards/models"
 	"fmt"
 	"github.com/google/uuid"
+	"strconv"
+	"time"
 )
 
 // Query returns main.QueryResolver implementation.
@@ -58,10 +60,15 @@ func (r *mutationResolver) PutCardInDeck(ctx context.Context, deckID string, car
 		card.ID = &newId
 	}
 
+	if card.NextDue == nil {
+		*card.NextDue = strconv.FormatInt(time.Now().Unix(), 10)
+	}
+
 	result := &models.Card{
 		ID:    *card.ID,
 		Front: *card.Front,
 		Back:  *card.Back,
+		NextDue: *card.NextDue,
 	}
 
 	db := models.NewCardsDynamoDB(dynamo.New(), "tst-cards")

@@ -5,5 +5,5 @@ type Card struct {
 	DeckId  string
 	Front   string
 	Back    string
-	NextDue string
+	NextDue string `json:"nextDue"`
 }

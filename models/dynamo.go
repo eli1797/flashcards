@@ -34,13 +34,6 @@ func (c cardsDynamoDB) PutCardInDeck(userId string, card *Card, deckId string) (
 	pk := userId + "#DECK#" + deckId
 	sk := "CARD#" + card.ID
 
-	var nextDue string
-	if card.NextDue == "" {
-		nextDue = "CARD#" + strconv.FormatInt(time.Now().Unix(), 10)
-	} else {
-		nextDue = "CARD#" + card.NextDue
-	}
-
 	_, err := c.d.UpdateItem(&dynamodb.UpdateItemInput{
 		ExpressionAttributeNames: map[string]*string{
 			"#lsi": aws.String("TYPE#nextDue"),
@@ -53,7 +46,7 @@ func (c cardsDynamoDB) PutCardInDeck(userId string, card *Card, deckId string) (
 				S: aws.String(card.Back),
 			},
 			":nextDue": {
-				S: aws.String(nextDue),
+				S: aws.String("CARD#" + card.NextDue),
 			},
 		},
 		Key: map[string]*dynamodb.AttributeValue{
