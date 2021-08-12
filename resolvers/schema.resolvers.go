@@ -56,7 +56,8 @@ func (r *mutationResolver) PutCardInDeck(ctx context.Context, deckID string, car
 	}
 
 	if card.NextDue == nil {
-		*card.NextDue = strconv.FormatInt(time.Now().Unix(), 10)
+		nextDue := strconv.FormatInt(time.Now().Unix(), 10)
+		card.NextDue = &nextDue
 	}
 
 	result := &models.Card{
