@@ -6,7 +6,13 @@ terraform {
     }
   }
 
-  required_version = "= 1.0.2"
+  required_version = "= 1.0.4"
+
+  backend "s3" {
+    bucket = "eli-state-store"
+    key    = "api.cards/tst/terraform.tfstate"
+    region = "us-east-2"
+  }
 }
 
 provider "aws" {
@@ -28,6 +34,7 @@ resource "aws_lambda_function" "api_cards" {
   environment {
     variables = {
       ENVIRONMENT = var.env
+      GIN_MODE    = "release"
     }
   }
 
@@ -67,6 +74,32 @@ resource "aws_iam_role" "lambda_exec" {
 resource "aws_iam_role_policy_attachment" "lambda_policy" {
   role       = aws_iam_role.lambda_exec.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_iam_role_policy" "basic_policy" {
+  name = "basic_policy"
+  role = aws_iam_role.lambda_exec.id
+
+  # Terraform's "jsonencode" function converts a
+  # Terraform expression result to valid JSON syntax.
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = [
+          "dynamodb:BatchGetItem",
+          "dynamodb:GetItem",
+          "dynamodb:Query",
+          "dynamodb:Scan",
+          "dynamodb:BatchWriteItem",
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem",
+        ]
+        Effect   = "Allow"
+        Resource = "*"
+      },
+    ]
+  })
 }
 
 # api.gateway
@@ -118,3 +151,51 @@ resource "aws_lambda_permission" "apigw" {
   # within the API Gateway REST API.
   source_arn = "${aws_api_gateway_rest_api.api_gw.execution_arn}/*/*"
 }
+
+# dynamodb table
+
+resource "aws_dynamodb_table" "cards_table" {
+  name           = "${var.env}-cards"
+  billing_mode   = "PROVISIONED"
+  read_capacity  = 5
+  write_capacity = 5
+  hash_key       = "userId#TYPE"
+  range_key      = "TYPE#id"
+
+  attribute {
+    name = "userId#TYPE"
+    type = "S"
+  }
+
+  attribute {
+    name = "TYPE#id"
+    type = "S"
+  }
+
+  attribute {
+    name = "TYPE#nextDue"
+    type = "S"
+  }
+
+  local_secondary_index {
+    name            = "lsi-nextDue"
+    range_key       = "TYPE#nextDue"
+    projection_type = "ALL"
+  }
+
+  tags = {
+    Environment = var.env
+  }
+}
+
+resource "aws_lambda_permission" "dynamodb_permissions" {
+  statement_id  = "AllowDynamoInteraction"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.api_cards.function_name
+  principal     = "apigateway.amazonaws.com"
+
+  # The "/*/*" portion grants access from any method on any resource
+  # within the API Gateway REST API.
+  source_arn = "${aws_api_gateway_rest_api.api_gw.execution_arn}/*/*"
+}
+

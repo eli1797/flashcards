@@ -1,24 +1,38 @@
 type User {
   id: ID!
-  decks: [Deck]!
 }
 
 type Deck {
   id: ID!
   title: String
   dueCards: [Card]
+  allCards: [Card]
 }
 
 type Card {
   id: ID!
+  deckId: ID!
   front: String
   back: String
+  nextDue: String
 }
 
 type Query {
   user: User!
-  deck(id: String): Deck
+  deck(deckId: ID!): Deck
   card(deckId: ID!, id: ID!): Card
+}
+
+type Mutation {
+  putCardInDeck(deckId: ID!, card: CardInput): Card
+  editCardNextDue(deckId: ID!, cardId: ID!, numMins: Int!): String
+}
+
+input CardInput {
+  id: ID
+  front: String
+  back: String
+  nextDue: String
 }
 
 # directive @goField(

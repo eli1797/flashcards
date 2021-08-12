@@ -35,8 +35,8 @@ type Config struct {
 }
 
 type ResolverRoot interface {
+	Mutation() MutationResolver
 	Query() QueryResolver
-	User() UserResolver
 	__Directive() __DirectiveResolver
 }
 
@@ -45,36 +45,44 @@ type DirectiveRoot struct {
 
 type ComplexityRoot struct {
 	Card struct {
-		Back  func(childComplexity int) int
-		Front func(childComplexity int) int
-		ID    func(childComplexity int) int
+		Back    func(childComplexity int) int
+		DeckId  func(childComplexity int) int
+		Front   func(childComplexity int) int
+		ID      func(childComplexity int) int
+		NextDue func(childComplexity int) int
 	}
 
 	Deck struct {
+		AllCards func(childComplexity int) int
 		DueCards func(childComplexity int) int
 		ID       func(childComplexity int) int
 		Title    func(childComplexity int) int
 	}
 
+	Mutation struct {
+		EditCardNextDue func(childComplexity int, deckID string, cardID string, numMins int) int
+		PutCardInDeck   func(childComplexity int, deckID string, card *models.CardInput) int
+	}
+
 	Query struct {
 		Card func(childComplexity int, deckID string, id string) int
-		Deck func(childComplexity int, id *string) int
+		Deck func(childComplexity int, deckID string) int
 		User func(childComplexity int) int
 	}
 
 	User struct {
-		Decks func(childComplexity int) int
-		ID    func(childComplexity int) int
+		Id func(childComplexity int) int
 	}
 }
 
+type MutationResolver interface {
+	PutCardInDeck(ctx context.Context, deckID string, card *models.CardInput) (*models.Card, error)
+	EditCardNextDue(ctx context.Context, deckID string, cardID string, numMins int) (*string, error)
+}
 type QueryResolver interface {
 	User(ctx context.Context) (*models.User, error)
-	Deck(ctx context.Context, id *string) (*models.Deck, error)
+	Deck(ctx context.Context, deckID string) (*models.Deck, error)
 	Card(ctx context.Context, deckID string, id string) (*models.Card, error)
-}
-type UserResolver interface {
-	ID(ctx context.Context, obj *models.User) (string, error)
 }
 type __DirectiveResolver interface {
 	IsRepeatable(ctx context.Context, obj *introspection.Directive) (bool, error)
@@ -102,6 +110,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Card.Back(childComplexity), true
 
+	case "Card.deckId":
+		if e.complexity.Card.DeckId == nil {
+			break
+		}
+
+		return e.complexity.Card.DeckId(childComplexity), true
+
 	case "Card.front":
 		if e.complexity.Card.Front == nil {
 			break
@@ -115,6 +130,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Card.ID(childComplexity), true
+
+	case "Card.nextDue":
+		if e.complexity.Card.NextDue == nil {
+			break
+		}
+
+		return e.complexity.Card.NextDue(childComplexity), true
+
+	case "Deck.allCards":
+		if e.complexity.Deck.AllCards == nil {
+			break
+		}
+
+		return e.complexity.Deck.AllCards(childComplexity), true
 
 	case "Deck.dueCards":
 		if e.complexity.Deck.DueCards == nil {
@@ -136,6 +165,30 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Deck.Title(childComplexity), true
+
+	case "Mutation.editCardNextDue":
+		if e.complexity.Mutation.EditCardNextDue == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_editCardNextDue_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.EditCardNextDue(childComplexity, args["deckId"].(string), args["cardId"].(string), args["numMins"].(int)), true
+
+	case "Mutation.putCardInDeck":
+		if e.complexity.Mutation.PutCardInDeck == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_putCardInDeck_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.PutCardInDeck(childComplexity, args["deckId"].(string), args["card"].(*models.CardInput)), true
 
 	case "Query.card":
 		if e.complexity.Query.Card == nil {
@@ -159,7 +212,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.Deck(childComplexity, args["id"].(*string)), true
+		return e.complexity.Query.Deck(childComplexity, args["deckId"].(string)), true
 
 	case "Query.user":
 		if e.complexity.Query.User == nil {
@@ -168,19 +221,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.User(childComplexity), true
 
-	case "User.decks":
-		if e.complexity.User.Decks == nil {
-			break
-		}
-
-		return e.complexity.User.Decks(childComplexity), true
-
 	case "User.id":
-		if e.complexity.User.ID == nil {
+		if e.complexity.User.Id == nil {
 			break
 		}
 
-		return e.complexity.User.ID(childComplexity), true
+		return e.complexity.User.Id(childComplexity), true
 
 	}
 	return 0, false
@@ -199,6 +245,20 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 			}
 			first = false
 			data := ec._Query(ctx, rc.Operation.SelectionSet)
+			var buf bytes.Buffer
+			data.MarshalGQL(&buf)
+
+			return &graphql.Response{
+				Data: buf.Bytes(),
+			}
+		}
+	case ast.Mutation:
+		return func(ctx context.Context) *graphql.Response {
+			if !first {
+				return nil
+			}
+			first = false
+			data := ec._Mutation(ctx, rc.Operation.SelectionSet)
 			var buf bytes.Buffer
 			data.MarshalGQL(&buf)
 
@@ -234,25 +294,39 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 var sources = []*ast.Source{
 	{Name: "schema/schema.graphqls", Input: `type User {
   id: ID!
-  decks: [Deck]!
 }
 
 type Deck {
   id: ID!
   title: String
   dueCards: [Card]
+  allCards: [Card]
 }
 
 type Card {
   id: ID!
+  deckId: ID!
   front: String
   back: String
+  nextDue: String
 }
 
 type Query {
   user: User!
-  deck(id: String): Deck
+  deck(deckId: ID!): Deck
   card(deckId: ID!, id: ID!): Card
+}
+
+type Mutation {
+  putCardInDeck(deckId: ID!, card: CardInput): Card
+  editCardNextDue(deckId: ID!, cardId: ID!, numMins: Int!): String
+}
+
+input CardInput {
+  id: ID
+  front: String
+  back: String
+  nextDue: String
 }
 
 # directive @goField(
@@ -268,6 +342,63 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 // endregion ************************** generated!.gotpl **************************
 
 // region    ***************************** args.gotpl *****************************
+
+func (ec *executionContext) field_Mutation_editCardNextDue_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["deckId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deckId"))
+		arg0, err = ec.unmarshalNID2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["deckId"] = arg0
+	var arg1 string
+	if tmp, ok := rawArgs["cardId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cardId"))
+		arg1, err = ec.unmarshalNID2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["cardId"] = arg1
+	var arg2 int
+	if tmp, ok := rawArgs["numMins"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("numMins"))
+		arg2, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["numMins"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_putCardInDeck_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["deckId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deckId"))
+		arg0, err = ec.unmarshalNID2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["deckId"] = arg0
+	var arg1 *models.CardInput
+	if tmp, ok := rawArgs["card"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("card"))
+		arg1, err = ec.unmarshalOCardInput2ᚖflashcardsᚋmodelsᚐCardInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["card"] = arg1
+	return args, nil
+}
 
 func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
@@ -311,15 +442,15 @@ func (ec *executionContext) field_Query_card_args(ctx context.Context, rawArgs m
 func (ec *executionContext) field_Query_deck_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 *string
-	if tmp, ok := rawArgs["id"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-		arg0, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+	var arg0 string
+	if tmp, ok := rawArgs["deckId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deckId"))
+		arg0, err = ec.unmarshalNID2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["id"] = arg0
+	args["deckId"] = arg0
 	return args, nil
 }
 
@@ -396,6 +527,41 @@ func (ec *executionContext) _Card_id(ctx context.Context, field graphql.Collecte
 	return ec.marshalNID2string(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Card_deckId(ctx context.Context, field graphql.CollectedField, obj *models.Card) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Card",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DeckId, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNID2string(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Card_front(ctx context.Context, field graphql.CollectedField, obj *models.Card) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -447,6 +613,38 @@ func (ec *executionContext) _Card_back(ctx context.Context, field graphql.Collec
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.Back, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalOString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Card_nextDue(ctx context.Context, field graphql.CollectedField, obj *models.Card) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Card",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.NextDue, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -559,6 +757,116 @@ func (ec *executionContext) _Deck_dueCards(ctx context.Context, field graphql.Co
 	return ec.marshalOCard2ᚕᚖflashcardsᚋmodelsᚐCard(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Deck_allCards(ctx context.Context, field graphql.CollectedField, obj *models.Deck) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Deck",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AllCards()
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*models.Card)
+	fc.Result = res
+	return ec.marshalOCard2ᚕᚖflashcardsᚋmodelsᚐCard(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_putCardInDeck(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_putCardInDeck_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().PutCardInDeck(rctx, args["deckId"].(string), args["card"].(*models.CardInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*models.Card)
+	fc.Result = res
+	return ec.marshalOCard2ᚖflashcardsᚋmodelsᚐCard(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_editCardNextDue(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_editCardNextDue_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().EditCardNextDue(rctx, args["deckId"].(string), args["cardId"].(string), args["numMins"].(int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Query_user(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -619,7 +927,7 @@ func (ec *executionContext) _Query_deck(ctx context.Context, field graphql.Colle
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Deck(rctx, args["id"].(*string))
+		return ec.resolvers.Query().Deck(rctx, args["deckId"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -754,14 +1062,14 @@ func (ec *executionContext) _User_id(ctx context.Context, field graphql.Collecte
 		Object:     "User",
 		Field:      field,
 		Args:       nil,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.User().ID(rctx, obj)
+		return obj.Id, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -776,41 +1084,6 @@ func (ec *executionContext) _User_id(ctx context.Context, field graphql.Collecte
 	res := resTmp.(string)
 	fc.Result = res
 	return ec.marshalNID2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _User_decks(ctx context.Context, field graphql.CollectedField, obj *models.User) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "User",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Decks, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.([]*models.Deck)
-	fc.Result = res
-	return ec.marshalNDeck2ᚕᚖflashcardsᚋmodelsᚐDeck(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) ___Directive_name(ctx context.Context, field graphql.CollectedField, obj *introspection.Directive) (ret graphql.Marshaler) {
@@ -1935,6 +2208,50 @@ func (ec *executionContext) ___Type_ofType(ctx context.Context, field graphql.Co
 
 // region    **************************** input.gotpl *****************************
 
+func (ec *executionContext) unmarshalInputCardInput(ctx context.Context, obj interface{}) (models.CardInput, error) {
+	var it models.CardInput
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "id":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			it.ID, err = ec.unmarshalOID2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "front":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("front"))
+			it.Front, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "back":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("back"))
+			it.Back, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "nextDue":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nextDue"))
+			it.NextDue, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 // endregion **************************** input.gotpl *****************************
 
 // region    ************************** interface.gotpl ***************************
@@ -1959,10 +2276,17 @@ func (ec *executionContext) _Card(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "deckId":
+			out.Values[i] = ec._Card_deckId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "front":
 			out.Values[i] = ec._Card_front(ctx, field, obj)
 		case "back":
 			out.Values[i] = ec._Card_back(ctx, field, obj)
+		case "nextDue":
+			out.Values[i] = ec._Card_nextDue(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -1994,6 +2318,38 @@ func (ec *executionContext) _Deck(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Deck_title(ctx, field, obj)
 		case "dueCards":
 			out.Values[i] = ec._Deck_dueCards(ctx, field, obj)
+		case "allCards":
+			out.Values[i] = ec._Deck_allCards(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var mutationImplementors = []string{"Mutation"}
+
+func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, mutationImplementors)
+
+	ctx = graphql.WithFieldContext(ctx, &graphql.FieldContext{
+		Object: "Mutation",
+	})
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Mutation")
+		case "putCardInDeck":
+			out.Values[i] = ec._Mutation_putCardInDeck(ctx, field)
+		case "editCardNextDue":
+			out.Values[i] = ec._Mutation_editCardNextDue(ctx, field)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -2083,23 +2439,9 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("User")
 		case "id":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._User_id(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
-				return res
-			})
-		case "decks":
-			out.Values[i] = ec._User_decks(ctx, field, obj)
+			out.Values[i] = ec._User_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
@@ -2386,43 +2728,6 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 	return res
 }
 
-func (ec *executionContext) marshalNDeck2ᚕᚖflashcardsᚋmodelsᚐDeck(ctx context.Context, sel ast.SelectionSet, v []*models.Deck) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalODeck2ᚖflashcardsᚋmodelsᚐDeck(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-	return ret
-}
-
 func (ec *executionContext) unmarshalNID2string(ctx context.Context, v interface{}) (string, error) {
 	res, err := graphql.UnmarshalID(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -2430,6 +2735,21 @@ func (ec *executionContext) unmarshalNID2string(ctx context.Context, v interface
 
 func (ec *executionContext) marshalNID2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
 	res := graphql.MarshalID(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+	}
+	return res
+}
+
+func (ec *executionContext) unmarshalNInt2int(ctx context.Context, v interface{}) (int, error) {
+	res, err := graphql.UnmarshalInt(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNInt2int(ctx context.Context, sel ast.SelectionSet, v int) graphql.Marshaler {
+	res := graphql.MarshalInt(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "must not be null")
@@ -2767,11 +3087,34 @@ func (ec *executionContext) marshalOCard2ᚖflashcardsᚋmodelsᚐCard(ctx conte
 	return ec._Card(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalOCardInput2ᚖflashcardsᚋmodelsᚐCardInput(ctx context.Context, v interface{}) (*models.CardInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputCardInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalODeck2ᚖflashcardsᚋmodelsᚐDeck(ctx context.Context, sel ast.SelectionSet, v *models.Deck) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._Deck(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOID2ᚖstring(ctx context.Context, v interface{}) (*string, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := graphql.UnmarshalID(v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOID2ᚖstring(ctx context.Context, sel ast.SelectionSet, v *string) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return graphql.MarshalID(*v)
 }
 
 func (ec *executionContext) unmarshalOString2string(ctx context.Context, v interface{}) (string, error) {

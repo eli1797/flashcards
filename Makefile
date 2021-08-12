@@ -21,6 +21,9 @@ build:
 
 build-linux:
 	go get ./...
-	env GOOS=linux go build -o bin/main main.go
+	GOOS=linux go build -o bin/main main.go
 
+run:
+	go run main.go
+	
 .PHONY:

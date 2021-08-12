@@ -3,16 +3,14 @@ package main
 import (
 	"flashcards/generated"
 	"flashcards/resolvers"
-
-	"github.com/apex/gateway"
+	"log"
+	"net/http"
+	"os"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
+	"github.com/apex/gateway"
 	"github.com/gin-gonic/gin"
-
-	"log"
-
-	"os"
 )
 
 func main() {
@@ -35,7 +33,11 @@ func main() {
 	server.GET("/__", HandleGraphqlPlayground())
 	server.POST("/query", HandleGraphqlQuery())
 
-	log.Fatal(gateway.ListenAndServe(port, server))
+	if gin.Mode() == "debug" {
+		log.Fatal(http.ListenAndServe(port, server))
+	} else if gin.Mode() == "release" {
+		log.Fatal(gateway.ListenAndServe(port, server))
+	}
 }
 
 func HandleGraphqlPlayground() gin.HandlerFunc {
