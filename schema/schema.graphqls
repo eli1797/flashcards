@@ -25,6 +25,7 @@ type Query {
 
 type Mutation {
   putCardInDeck(deckId: ID!, card: CardInput): Card
+  editCardNextDue(deckId: ID!, cardId: ID!, numMins: Int!): String
 }
 
 input CardInput {

@@ -12,8 +12,10 @@ import (
 
 type cardsDynamo interface {
 	PutCardInDeck(userId string, card *Card, deckId string) (*Card, error)
+	MoveCardNextDue(userId string, deckId string, cardId string, nextDue string) error
 	GetAllCardsFromDeck(userId string, deckId string) ([]*Card, error)
 	GetDueCardsFromDeck(userId string, deckId string) ([]*Card, error)
+	GetCardFromDeckById(userId string, deckId string, cardId string) (*Card, error)
 }
 
 type cardsDynamoDB struct {
@@ -133,6 +135,57 @@ func (c cardsDynamoDB) GetDueCardsFromDeck(userId string, deckId string) ([]*Car
 
 	return cards, nil
 }
+
+func (c cardsDynamoDB) MoveCardNextDue(userId string, deckId string, cardId string, nextDue string) error {
+	pk := userId + "#DECK#" + deckId
+	sk := "CARD#" + cardId
+
+	_, err := c.d.UpdateItem(&dynamodb.UpdateItemInput{
+		ExpressionAttributeNames: map[string]*string{
+			"#lsi": aws.String("TYPE#nextDue"),
+		},
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":nextDue": {
+				S: aws.String("CARD#" + nextDue),
+			},
+		},
+		Key: map[string]*dynamodb.AttributeValue{
+			"userId#TYPE": {S: aws.String(pk)},
+			"TYPE#id":     {S: aws.String(sk)},
+		},
+		UpdateExpression: aws.String("SET #lsi = :nextDue"),
+		TableName:        &c.tableName,
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c cardsDynamoDB) GetCardFromDeckById(userId string, deckId string, cardId string) (*Card, error) {
+	pk := userId + "#DECK#" + deckId
+
+	// TODO: could add some sort of buffer here (to get cards also due in the next hour or so)
+	// or segment the timestamps to days in put
+	sk := "CARD#" + cardId
+
+	res, err := c.d.GetItem(&dynamodb.GetItemInput{
+		ExpressionAttributeNames: nil,
+		Key:                      map[string]*dynamodb.AttributeValue{
+			"userId#TYPE": {S: aws.String(pk)},
+			"TYPE#id":     {S: aws.String(sk)},
+		},
+		TableName:        &c.tableName,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	card := convertDynamoToCard(res.Item)
+	return card, err
+}
+
 
 func convertDynamoToCard(input map[string]*dynamodb.AttributeValue) *Card {
 	// TODO, set deck id

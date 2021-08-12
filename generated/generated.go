@@ -60,7 +60,8 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		PutCardInDeck func(childComplexity int, deckID string, card *models.CardInput) int
+		EditCardNextDue func(childComplexity int, deckID string, cardID string, numMins int) int
+		PutCardInDeck   func(childComplexity int, deckID string, card *models.CardInput) int
 	}
 
 	Query struct {
@@ -76,6 +77,7 @@ type ComplexityRoot struct {
 
 type MutationResolver interface {
 	PutCardInDeck(ctx context.Context, deckID string, card *models.CardInput) (*models.Card, error)
+	EditCardNextDue(ctx context.Context, deckID string, cardID string, numMins int) (*string, error)
 }
 type QueryResolver interface {
 	User(ctx context.Context) (*models.User, error)
@@ -163,6 +165,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Deck.Title(childComplexity), true
+
+	case "Mutation.editCardNextDue":
+		if e.complexity.Mutation.EditCardNextDue == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_editCardNextDue_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.EditCardNextDue(childComplexity, args["deckId"].(string), args["cardId"].(string), args["numMins"].(int)), true
 
 	case "Mutation.putCardInDeck":
 		if e.complexity.Mutation.PutCardInDeck == nil {
@@ -305,6 +319,7 @@ type Query {
 
 type Mutation {
   putCardInDeck(deckId: ID!, card: CardInput): Card
+  editCardNextDue(deckId: ID!, cardId: ID!, numMins: Int!): String
 }
 
 input CardInput {
@@ -327,6 +342,39 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 // endregion ************************** generated!.gotpl **************************
 
 // region    ***************************** args.gotpl *****************************
+
+func (ec *executionContext) field_Mutation_editCardNextDue_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["deckId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deckId"))
+		arg0, err = ec.unmarshalNID2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["deckId"] = arg0
+	var arg1 string
+	if tmp, ok := rawArgs["cardId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cardId"))
+		arg1, err = ec.unmarshalNID2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["cardId"] = arg1
+	var arg2 int
+	if tmp, ok := rawArgs["numMins"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("numMins"))
+		arg2, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["numMins"] = arg2
+	return args, nil
+}
 
 func (ec *executionContext) field_Mutation_putCardInDeck_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
@@ -778,6 +826,45 @@ func (ec *executionContext) _Mutation_putCardInDeck(ctx context.Context, field g
 	res := resTmp.(*models.Card)
 	fc.Result = res
 	return ec.marshalOCard2ᚖflashcardsᚋmodelsᚐCard(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_editCardNextDue(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_editCardNextDue_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().EditCardNextDue(rctx, args["deckId"].(string), args["cardId"].(string), args["numMins"].(int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_user(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -2261,6 +2348,8 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			out.Values[i] = graphql.MarshalString("Mutation")
 		case "putCardInDeck":
 			out.Values[i] = ec._Mutation_putCardInDeck(ctx, field)
+		case "editCardNextDue":
+			out.Values[i] = ec._Mutation_editCardNextDue(ctx, field)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -2646,6 +2735,21 @@ func (ec *executionContext) unmarshalNID2string(ctx context.Context, v interface
 
 func (ec *executionContext) marshalNID2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
 	res := graphql.MarshalID(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+	}
+	return res
+}
+
+func (ec *executionContext) unmarshalNInt2int(ctx context.Context, v interface{}) (int, error) {
+	res, err := graphql.UnmarshalInt(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNInt2int(ctx context.Context, sel ast.SelectionSet, v int) graphql.Marshaler {
+	res := graphql.MarshalInt(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "must not be null")
