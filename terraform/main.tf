@@ -6,7 +6,7 @@ terraform {
     }
   }
 
-  required_version = "= 1.0.2"
+  required_version = "= 1.0.4"
 
   backend "s3" {
     bucket = "eli-state-store"
@@ -157,13 +157,18 @@ resource "aws_lambda_permission" "apigw" {
 resource "aws_dynamodb_table" "cards_table" {
   name           = "${var.env}-cards"
   billing_mode   = "PROVISIONED"
-  read_capacity  = 10
-  write_capacity = 10
+  read_capacity  = 5
+  write_capacity = 5
   hash_key       = "userId#TYPE"
-  range_key      = "TYPE#nextDue"
+  range_key      = "TYPE#id"
 
   attribute {
     name = "userId#TYPE"
+    type = "S"
+  }
+
+  attribute {
+    name = "TYPE#id"
     type = "S"
   }
 
@@ -172,19 +177,14 @@ resource "aws_dynamodb_table" "cards_table" {
     type = "S"
   }
 
-  attribute {
-    name = "CARD#cardId"
-    type = "S"
-  }
-
   local_secondary_index {
-    name            = "cardId-lsi"
-    range_key       = "CARD#cardId"
+    name            = "lsi-nextDue"
+    range_key       = "TYPE#nextDue"
     projection_type = "ALL"
   }
 
   tags = {
-    Environment = "${var.env}"
+    Environment = var.env
   }
 }
 

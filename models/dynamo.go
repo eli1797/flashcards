@@ -32,14 +32,19 @@ func NewCardsDynamoDB(client *dynamodb.DynamoDB, tableName string) cardsDynamoDB
 func (c cardsDynamoDB) PutCardInDeck(userId string, card *Card, deckId string) (*Card, error) {
 
 	pk := userId + "#DECK#" + deckId
-	var sk string
+	sk := "CARD#" + card.ID
+
+	var nextDue string
 	if card.NextDue == "" {
-		sk = "CARD#" + strconv.FormatInt(time.Now().Unix(), 10)
+		nextDue = "CARD#" + strconv.FormatInt(time.Now().Unix(), 10)
 	} else {
-		sk = "CARD#" + card.NextDue
+		nextDue = "CARD#" + card.NextDue
 	}
 
 	_, err := c.d.UpdateItem(&dynamodb.UpdateItemInput{
+		ExpressionAttributeNames: map[string]*string{
+			"#lsi": aws.String("TYPE#nextDue"),
+		},
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
 			":front": {
 				S: aws.String(card.Front),
@@ -47,15 +52,15 @@ func (c cardsDynamoDB) PutCardInDeck(userId string, card *Card, deckId string) (
 			":back": {
 				S: aws.String(card.Back),
 			},
-			":cardId": {
-				S: aws.String(card.ID),
+			":nextDue": {
+				S: aws.String(nextDue),
 			},
 		},
 		Key: map[string]*dynamodb.AttributeValue{
-			"userId#TYPE":  {S: aws.String(pk)},
-			"TYPE#nextDue": {S: aws.String(sk)},
+			"userId#TYPE": {S: aws.String(pk)},
+			"TYPE#id":     {S: aws.String(sk)},
 		},
-		UpdateExpression: aws.String("SET cardId = :cardId, front = :front, rear = :back"),
+		UpdateExpression: aws.String("SET #lsi = :nextDue, front = :front, rear = :back"),
 		TableName:        &c.tableName,
 	})
 	if err != nil {
@@ -70,7 +75,7 @@ func (c cardsDynamoDB) GetAllCardsFromDeck(userId string, deckId string) ([]*Car
 	pk := userId + "#DECK#" + deckId
 
 	res, err := c.d.Query(&dynamodb.QueryInput{
-		ExpressionAttributeNames:   map[string]*string{
+		ExpressionAttributeNames: map[string]*string{
 			"#pk": aws.String("userId#TYPE"),
 		},
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
@@ -78,8 +83,8 @@ func (c cardsDynamoDB) GetAllCardsFromDeck(userId string, deckId string) ([]*Car
 				S: aws.String(pk),
 			},
 		},
-		KeyConditionExpression:    aws.String("#pk = :pk"),
-		TableName:        &c.tableName,
+		KeyConditionExpression: aws.String("#pk = :pk"),
+		TableName:              &c.tableName,
 	})
 	if err != nil {
 		return nil, err
@@ -105,7 +110,7 @@ func (c cardsDynamoDB) GetDueCardsFromDeck(userId string, deckId string) ([]*Car
 	sk := "CARD#" + strconv.FormatInt(time.Now().Unix(), 10)
 
 	res, err := c.d.Query(&dynamodb.QueryInput{
-		ExpressionAttributeNames:   map[string]*string{
+		ExpressionAttributeNames: map[string]*string{
 			"#pk": aws.String("userId#TYPE"),
 			"#sk": aws.String("TYPE#nextDue"),
 		},
@@ -117,8 +122,9 @@ func (c cardsDynamoDB) GetDueCardsFromDeck(userId string, deckId string) ([]*Car
 				S: aws.String(sk),
 			},
 		},
-		KeyConditionExpression:    aws.String("#pk = :pk AND #sk <= :sk"),
-		TableName:        &c.tableName,
+		KeyConditionExpression: aws.String("#pk = :pk AND #sk <= :sk"),
+		IndexName:              aws.String("lsi-nextDue"),
+		TableName:              &c.tableName,
 	})
 	if err != nil {
 		return nil, err
@@ -139,11 +145,12 @@ func convertDynamoToCard(input map[string]*dynamodb.AttributeValue) *Card {
 	// TODO, set deck id
 
 	nextDue := strings.Split(*input["TYPE#nextDue"].S, "#")[1]
+	id := strings.Split(*input["TYPE#id"].S, "#")[1]
 
 	out := &Card{
-		ID: *input["cardId"].S,
-		Front: *input["front"].S,
-		Back: *input["rear"].S,
+		ID:      id,
+		Front:   *input["front"].S,
+		Back:    *input["rear"].S,
 		NextDue: nextDue,
 	}
 
